@@ -1,7 +1,7 @@
 plugins {
     id("com.android.library")
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.compose)
+    id("maven-publish")
 }
 
 android {
@@ -56,3 +56,20 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 }
+
+afterEvaluate {
+    publishing {
+        publications {
+            create<MavenPublication>("release") {
+                from(components["release"])
+
+                groupId = "com.github.Rohan-u"
+                artifactId = "MediaPicker"
+                version = "1.0.3beta4" // Will be picked from Git tag
+
+                artifact("$buildDir/outputs/aar/mediapickerlibrary-release.aar")
+            }
+        }
+    }
+}
+
