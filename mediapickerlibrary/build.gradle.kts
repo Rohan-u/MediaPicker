@@ -65,9 +65,9 @@ afterEvaluate {
 
                 groupId = "com.github.Rohan-u"
                 artifactId = "MediaPicker"
-                version = "1.0.3beta5" // Will be picked from Git tag
+                version = "1.0.3beta6" // Will be picked from Git tag
 
-                artifact("$buildDir/outputs/aar/mediapickerlibrary-release.aar")
+                //artifact("$buildDir/outputs/aar/mediapickerlibrary-release.aar")
             }
         }
     }
