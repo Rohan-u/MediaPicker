@@ -23,4 +23,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "MediaPicker"
 include(":app")
- 
+include(":mediapickerlibrary")

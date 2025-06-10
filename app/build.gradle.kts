@@ -60,17 +60,6 @@ dependencies {
 
     // Data binding
     implementation(libs.androidx.databinding.runtime)
+    implementation(libs.play.services.cast.framework)
+    implementation(project(":mediapickerlibrary"))
 }
-
-//afterEvaluate {
-//    publishing {
-//        publications {
-//            create<MavenPublication>("release") {
-//                from(components["release"])
-//                groupId = "com.github.YourUsername" // Your GitHub username
-//                artifactId = "MediaPicker"
-//                version = "1.0.0"
-//            }
-//        }
-//    }
-//}

@@ -1,11 +1,11 @@
-package com.app.mediapicker
+package com.app.mediapickerlibrary
 
 import android.net.Uri
 import androidx.activity.ComponentActivity
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 
-class MediaPickerImagePicker(
+class ImagePicker(
     private val activity: ComponentActivity,
     private val onImagePicked: (Uri?) -> Unit
 ) {
