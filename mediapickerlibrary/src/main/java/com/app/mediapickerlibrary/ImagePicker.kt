@@ -6,8 +6,8 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 
 class ImagePicker(
-    private val activity: ComponentActivity,
-    private val onImagePicked: (Uri?) -> Unit
+    activity: ComponentActivity,
+    onImagePicked: (Uri?) -> Unit
 ) {
 
     private val getContentLauncher: ActivityResultLauncher<String> =
