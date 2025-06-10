@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    id("maven-publish")
 }
 
 android {
@@ -60,3 +61,16 @@ dependencies {
     // Data binding
     implementation(libs.androidx.databinding.runtime)
 }
+
+//afterEvaluate {
+//    publishing {
+//        publications {
+//            create<MavenPublication>("release") {
+//                from(components["release"])
+//                groupId = "com.github.YourUsername" // Your GitHub username
+//                artifactId = "MediaPicker"
+//                version = "1.0.0"
+//            }
+//        }
+//    }
+//}
