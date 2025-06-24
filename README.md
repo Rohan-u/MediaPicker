@@ -37,8 +37,6 @@ Add the following permissions and configuration:
 ```xml
 <uses-feature android:name="android.hardware.camera" android:required="false" />
 <uses-permission android:name="android.permission.CAMERA" />
-<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
-<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
 ```
 
 Add the `FileProvider` inside your `<application>` tag:
@@ -70,51 +68,7 @@ Add the `FileProvider` inside your `<application>` tag:
 
 ## 🧠 Usage
 
-### Step 1: Initialize the Picker
-
-#### `ImagePicker.kt`
-
-```kotlin
-class ImagePicker(
-    owner: LifecycleOwner,
-    registry: ActivityResultRegistry,
-    onImagePicked: (Uri?) -> Unit
-) {
-    private var imageUri: Uri? = null
-
-    var disableGallery = false
-    var disableCamera = false
-
-    private val getContentLauncher =
-        registry.register("getContent", owner, ActivityResultContracts.GetContent()) { uri ->
-            onImagePicked(uri)
-        }
-
-    private val takePictureLauncher =
-        registry.register("takePicture", owner, ActivityResultContracts.TakePicture()) { success ->
-            if (success && imageUri != null) {
-                onImagePicked(imageUri!!)
-            }
-        }
-
-    fun pickImage(context: Context) {
-        MediaPicker.showDialogMediaPicker(
-            context,
-            getContentLauncher,
-            onCameraUriPrepared = { uri ->
-                imageUri = uri
-                takePictureLauncher.launch(uri)
-            },
-            disableGallery = disableGallery,
-            disableCamera = disableCamera
-        )
-    }
-}
-```
-
----
-
-### Step 2: Use in an Activity
+### Step 1: Use in an Activity
 
 ```kotlin
 private lateinit var mediaPicker: ImagePicker
@@ -138,7 +92,7 @@ override fun onCreate(savedInstanceState: Bundle?) {
 
 ---
 
-### Step 3: Use in a Fragment
+### Step 2: Use in a Fragment
 
 ```kotlin
 private lateinit var mediaPicker: ImagePicker
