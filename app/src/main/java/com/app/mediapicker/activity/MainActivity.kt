@@ -1,10 +1,11 @@
-package com.app.mediapicker
+package com.app.mediapicker.activity
 
 import android.os.Bundle
-import android.widget.Toast
+import android.view.View
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import com.app.mediapicker.databinding.ActivityMainBinding
+import com.app.mediapicker.fragment.HomeFragment
 import com.app.mediapickerlibrary.ImagePicker
 
 class MainActivity : AppCompatActivity() {
@@ -20,15 +21,22 @@ class MainActivity : AppCompatActivity() {
 
         enableEdgeToEdge()
 
-        mediaPicker = ImagePicker(this) { uri ->
+        mediaPicker = ImagePicker(this, activityResultRegistry) { uri ->
             uri?.let {
                 binding.imgSelectedImage.setImageURI(it)
             }
         }
 
+
         binding.btnSelectImage.setOnClickListener {
-            Toast.makeText(this, "Hello button clicked", Toast.LENGTH_LONG).show()
-            mediaPicker.pickImage()
+            mediaPicker.pickImage(this@MainActivity)
+        }
+
+        binding.btnFragment.setOnClickListener {
+            binding.fragmentContainer.visibility = View.VISIBLE
+            supportFragmentManager.beginTransaction()
+                .replace(com.app.mediapicker.R.id.fragment_container, HomeFragment())
+                .commit()
         }
     }
 }

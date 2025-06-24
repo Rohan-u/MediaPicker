@@ -2,4 +2,9 @@
 <resources>
 
     <style name="Theme.MediaPicker" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <style name="CustomDialogStyle" parent="Theme.MediaPicker">
+        <item name="android:windowEnterAnimation">@anim/slide_in_bottom</item>
+        <item name="android:windowExitAnimation">@anim/slide_out_bottom</item>
+    </style>
 </resources>
