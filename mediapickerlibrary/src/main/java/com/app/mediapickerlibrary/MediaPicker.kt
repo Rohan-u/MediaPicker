@@ -83,7 +83,7 @@ object MediaPicker {
 
     // check permission
     private fun checkPermissions(context: Context): Boolean {
-        val permissions: ArrayList<String> = java.util.ArrayList(listOf(Manifest.permission.CAMERA))
+        val permissions: ArrayList<String> = ArrayList(listOf(Manifest.permission.CAMERA))
         var result: Int
         val listPermissionsNeeded: MutableList<String> = ArrayList()
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {

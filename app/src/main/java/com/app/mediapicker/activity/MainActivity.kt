@@ -12,7 +12,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var mediaPicker: ImagePicker
 
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Inflate the binding
@@ -21,12 +20,11 @@ class MainActivity : AppCompatActivity() {
 
         enableEdgeToEdge()
 
-        mediaPicker = ImagePicker(this, activityResultRegistry) { uri ->
+        mediaPicker = ImagePicker(this) { uri ->
             uri?.let {
                 binding.imgSelectedImage.setImageURI(it)
             }
         }
-
 
         binding.btnSelectImage.setOnClickListener {
             mediaPicker.pickImage(this@MainActivity)
