@@ -85,20 +85,30 @@ Add the `FileProvider` inside your `<application>` tag:
 private lateinit var mediaPicker: ImagePicker
 
 override fun onCreate(savedInstanceState: Bundle?) {
-    super.onCreate(savedInstanceState)
-    binding = ActivityMainBinding.inflate(layoutInflater)
-    setContentView(binding.root)
+        super.onCreate(savedInstanceState)
+        // Inflate the binding
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
-    mediaPicker = ImagePicker(this, activityResultRegistry) { uri ->
-        uri?.let {
-            binding.imgSelectedImage.setImageURI(it)
+        enableEdgeToEdge()
+
+        mediaPicker = ImagePicker(this) { uri ->
+            uri?.let {
+                binding.imgSelectedImage.setImageURI(it)
+            }
+        }
+
+        binding.btnSelectImage.setOnClickListener {
+            mediaPicker.pickImage(this@MainActivity)
+        }
+
+        binding.btnFragment.setOnClickListener {
+            binding.fragmentContainer.visibility = View.VISIBLE
+            supportFragmentManager.beginTransaction()
+                .replace(com.app.mediapicker.R.id.fragment_container, HomeFragment())
+                .commit()
         }
     }
-
-    binding.btnSelectImage.setOnClickListener {
-        mediaPicker.pickImage(this)
-    }
-}
 ```
 
 ---
@@ -107,16 +117,6 @@ override fun onCreate(savedInstanceState: Bundle?) {
 
 ```kotlin
 private lateinit var mediaPicker: ImagePicker
-
-override fun onAttach(context: Context) {
-    super.onAttach(context)
-    mediaPicker = ImagePicker(this, requireActivity().activityResultRegistry) { uri ->
-        uri?.let {
-            view?.findViewById<AppCompatImageView>(R.id.imgSelectedImage)
-                ?.setImageURI(it)
-        }
-    }
-}
 
 override fun onCreateView(
     inflater: LayoutInflater, container: ViewGroup?,
@@ -127,12 +127,18 @@ override fun onCreateView(
 }
 
 override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-    super.onViewCreated(view, savedInstanceState)
+        super.onViewCreated(view, savedInstanceState)
 
-    binding.btnSelectImage.setOnClickListener {
-        mediaPicker.pickImage(requireContext())
+        mediaPicker = ImagePicker(this) { uri ->
+            uri?.let {
+                binding.imgSelectedImage.setImageURI(it)
+            }
+        }
+
+        binding.btnSelectImage.setOnClickListener {
+            mediaPicker.pickImage(requireContext())
+        }
     }
-}
 ```
 
 ---
