@@ -25,7 +25,18 @@ dependencies {
     implementation("com.github.Rohan-u:MediaPicker:v1.0.3")
 }
 ```
-
+### Step 2: Add the setting.gradle
+```kotlin
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+        maven {
+            url = uri("https://jitpack.io")
+        }
+    }
+}
+```
 </details>
 
 ---
