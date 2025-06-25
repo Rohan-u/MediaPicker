@@ -26,6 +26,7 @@ dependencies {
 }
 ```
 ### Step 2: Add the setting.gradle
+```kotlin
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
@@ -36,6 +37,7 @@ dependencyResolutionManagement {
         }
     }
 }
+```
 </details>
 
 ---
