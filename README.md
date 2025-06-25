@@ -48,6 +48,10 @@ Add the following permissions and configuration:
 ```xml
 <uses-feature android:name="android.hardware.camera" android:required="false" />
 <uses-permission android:name="android.permission.CAMERA" />
+<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
 ```
 
 Add the `FileProvider` inside your `<application>` tag:
