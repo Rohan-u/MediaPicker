@@ -8,36 +8,37 @@ import androidx.activity.result.contract.ActivityResultContracts
 
 class ImagePicker(
     caller: ActivityResultCaller,
-    private val onImagePicked: (Uri?) -> Unit
+    private val onImagePicked: (Uri?) -> Unit,
 ) {
-
-    private var imageUri: Uri? = null
-
     var disableGallery = false
     var disableCamera = false
 
+    // Gallery picker
     private val getContentLauncher: ActivityResultLauncher<String> =
         caller.registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
             onImagePicked(uri)
         }
 
-    private val takePictureLauncher: ActivityResultLauncher<Uri> =
-        caller.registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
-            if (success && imageUri != null) {
-                onImagePicked(imageUri)
-            }
+    // Document picker
+    val documentPickerLauncher =
+        caller.registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            onImagePicked(uri)
         }
+
+    init {
+        MediaPicker.registerCameraHandlers(caller, onImagePicked)
+    }
 
     fun pickImage(context: Context) {
         MediaPicker.showDialogMediaPicker(
             context,
             getContentLauncher,
-            onCameraUriPrepared = { uri ->
-                imageUri = uri
-                takePictureLauncher.launch(uri)
+            onCameraRequested = {
+                MediaPicker.requestPermissionsAndOpenCamera(context)
             },
             disableGallery = disableGallery,
-            disableCamera = disableCamera
+            disableCamera = disableCamera,
+            getDocumentLauncher = documentPickerLauncher
         )
     }
 }

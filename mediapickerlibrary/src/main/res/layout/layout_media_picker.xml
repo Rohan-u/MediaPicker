@@ -20,6 +20,7 @@
         android:id="@+id/ll_media_picker"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginHorizontal="10dp"
         android:orientation="horizontal"
         android:paddingBottom="10dp"
         android:paddingTop="15dp">
@@ -44,6 +45,17 @@
             android:drawableTop="@drawable/ic_camera"
             android:gravity="center"
             android:text="@string/camera"
+            android:textColor="@android:color/black"/>
+
+        <TextView
+            android:id="@+id/document"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:drawablePadding="10dp"
+            android:drawableTop="@drawable/ic_document"
+            android:gravity="center"
+            android:text="@string/document"
             android:textColor="@android:color/black"/>
 
     </LinearLayout>

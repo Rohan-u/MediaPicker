@@ -1,107 +1,141 @@
 package com.app.mediapickerlibrary
 
 import android.Manifest
-import android.app.Activity
 import android.app.Dialog
 import android.content.Context
-import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.view.Gravity
-import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.ActivityResultCaller
 import androidx.activity.result.ActivityResultLauncher
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.FileProvider
 import androidx.core.graphics.drawable.toDrawable
 import java.io.File
 
 object MediaPicker {
+    private var pendingCameraUri: Uri? = null
+    private var cameraResultLauncher: ActivityResultLauncher<Uri>? = null
+    private var permissionResultLauncher: ActivityResultLauncher<Array<String>>? = null
+    private var onCameraImageCaptured: ((Uri?) -> Unit)? = null
+    fun registerCameraHandlers(
+        caller: ActivityResultCaller,
+        onImagePicked: (Uri?) -> Unit
+    ) {
+        onCameraImageCaptured = onImagePicked
+
+        cameraResultLauncher =
+            caller.registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+                if (success) {
+                    onCameraImageCaptured?.invoke(pendingCameraUri)
+                } else {
+                    onCameraImageCaptured?.invoke(null)
+                }
+            }
+
+        permissionResultLauncher =
+            caller.registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+                val allGranted = permissions.all { it.value }
+                if (allGranted && pendingCameraUri != null) {
+                    cameraResultLauncher?.launch(pendingCameraUri!!)
+                } else {
+                    onCameraImageCaptured?.invoke(null)
+                }
+            }
+    }
+
+    fun requestPermissionsAndOpenCamera(context: Context) {
+        val permissions = mutableListOf(Manifest.permission.CAMERA)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            permissions += listOf(
+                Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            )
+        }
+
+        val photoFile = File(
+            context.getExternalFilesDir(Environment.DIRECTORY_PICTURES),
+            "captured_image_${System.currentTimeMillis()}.jpg"
+        )
+        val uri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            photoFile
+        )
+        pendingCameraUri = uri
+
+        permissionResultLauncher?.launch(permissions.toTypedArray())
+    }
+
     fun showDialogMediaPicker(
         context: Context,
         getContentLauncher: ActivityResultLauncher<String>,
-        onCameraUriPrepared: (Uri) -> Unit,
+        onCameraRequested: () -> Unit,
         disableGallery: Boolean,
-        disableCamera: Boolean
+        disableCamera: Boolean,
+        getDocumentLauncher: ActivityResultLauncher<Array<String>>,
     ) {
         if (disableGallery && disableCamera) {
-            // If both are disabled, do nothing or show a message
             Toast.makeText(context, "Enable camera or gallery", Toast.LENGTH_SHORT).show()
             return
         }
+
         if (disableGallery || disableCamera) {
-            if (disableGallery){
-                openCamera(context, onCameraUriPrepared)
-            } else if (disableCamera) {
+            if (disableGallery) {
+                onCameraRequested()
+            } else {
                 getContentLauncher.launch("image/*")
             }
-        }else {
+        } else {
             val popUpDialog = Dialog(context)
             popUpDialog.setContentView(R.layout.layout_media_picker)
             popUpDialog.window!!.setDimAmount(0.5f)
             popUpDialog.window!!.setWindowAnimations(R.style.CustomDialogStyle)
             popUpDialog.window!!.setLayout(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
             )
             popUpDialog.window!!.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
             popUpDialog.window!!.setGravity(Gravity.BOTTOM)
             popUpDialog.show()
+
             val camera = popUpDialog.findViewById<TextView>(R.id.camera)
             val gallery = popUpDialog.findViewById<TextView>(R.id.gallery)
-            camera.setOnClickListener { v: View? ->
+            val document = popUpDialog.findViewById<TextView>(R.id.document)
+
+            camera.setOnClickListener {
                 popUpDialog.dismiss()
-                openCamera(context, onCameraUriPrepared)
+                onCameraRequested()
             }
 
-            gallery.setOnClickListener { v: View? ->
+            gallery.setOnClickListener {
                 popUpDialog.dismiss()
                 getContentLauncher.launch("image/*")
             }
-        }
-    }
 
-    private fun openCamera(
-        context: Context,
-        onCameraUriPrepared: (Uri) -> Unit
-    ) {
-        if (checkPermissions(context)) {
-            val photoFile = File(
-                context.getExternalFilesDir(Environment.DIRECTORY_PICTURES),
-                "captured_image_${System.currentTimeMillis()}.jpg"
-            )
-            val imageUri = FileProvider.getUriForFile(
-                context, "${context.packageName}.fileprovider", photoFile
-            )
-            onCameraUriPrepared(imageUri)
-        }
-    }
-
-    // check permission
-    private fun checkPermissions(context: Context): Boolean {
-        val permissions: ArrayList<String> = ArrayList(listOf(Manifest.permission.CAMERA))
-        var result: Int
-        val listPermissionsNeeded: MutableList<String> = ArrayList()
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-            permissions.add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-            permissions.add(Manifest.permission.READ_EXTERNAL_STORAGE)
-        }
-        for (p in ArrayList<String>(permissions)) {
-            result = ContextCompat.checkSelfPermission(context, p)
-            if (result != PackageManager.PERMISSION_GRANTED) {
-                listPermissionsNeeded.add(p)
+            document.setOnClickListener {
+                popUpDialog.dismiss()
+                openDocumentPicker(getDocumentLauncher)
             }
         }
-        if (!listPermissionsNeeded.isEmpty()) {
-            ActivityCompat.requestPermissions(
-                context as Activity, listPermissionsNeeded.toTypedArray<String>(), 1001
-            )
-            return false
-        }
-        return true
+    }
+
+    private fun openDocumentPicker(
+        documentPickerLauncher: ActivityResultLauncher<Array<String>>
+    ) {
+        val mimeTypes = arrayOf(
+            "application/pdf",
+            "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.ms-excel",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "text/csv"
+        )
+        documentPickerLauncher.launch(mimeTypes)
     }
 }
