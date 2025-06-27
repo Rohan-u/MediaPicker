@@ -58,6 +58,17 @@
             android:text="@string/document"
             android:textColor="@android:color/black"/>
 
+        <TextView
+            android:id="@+id/video"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:drawablePadding="10dp"
+            android:drawableTop="@drawable/ic_video"
+            android:gravity="center"
+            android:text="@string/video"
+            android:textColor="@android:color/black"/>
+
     </LinearLayout>
 
 </LinearLayout>

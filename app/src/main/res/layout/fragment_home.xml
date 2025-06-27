@@ -19,18 +19,18 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
-        <androidx.appcompat.widget.AppCompatTextView
-            android:id="@+id/textFilename"
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerViewImages"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            app:layoutManager="androidx.recyclerview.widget.GridLayoutManager"
             android:layout_margin="@dimen/_20sdp"
-            android:textSize="@dimen/_14ssp"
-            android:fontFamily="sans-serif-condensed-medium"
-            android:textStyle="bold"
-            android:textColor="@color/m3_ref_palette_error10"
+            android:visibility="gone"
+            android:orientation="horizontal"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/btnSelectImage"/>
+
 
         <androidx.appcompat.widget.AppCompatImageView
             android:id="@+id/imgSelectedImage"
@@ -41,6 +41,17 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/btnSelectImage" />
+
+        <VideoView
+            android:id="@+id/videoView"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_margin="@dimen/_20sdp"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/btnSelectImage"/>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

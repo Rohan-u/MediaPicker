@@ -1,14 +1,15 @@
 package com.app.mediapicker.activity
 
-import android.content.ActivityNotFoundException
-import android.content.Intent
+import android.annotation.SuppressLint
 import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
 import android.view.View
-import android.widget.Toast
+import android.widget.MediaController
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import com.app.mediapicker.adapter.MediaAdapter
+import com.app.mediapicker.dataModel.MediaFile
 import com.app.mediapicker.databinding.ActivityMainBinding
 import com.app.mediapicker.fragment.HomeFragment
 import com.app.mediapickerlibrary.ImagePicker
@@ -16,6 +17,8 @@ import com.app.mediapickerlibrary.ImagePicker
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var mediaPicker: ImagePicker
+    private val mediaFileList = mutableListOf<MediaFile>()
+    private lateinit var mediaAdapter: MediaAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -24,58 +27,97 @@ class MainActivity : AppCompatActivity() {
 
         setupMediaPicker()
         setupClickListeners()
+        initRecyclerView()
     }
 
-    private fun setupMediaPicker() {
-        mediaPicker = ImagePicker(this) { uri ->
-            uri?.let {
-                val mimeType = contentResolver.getType(it)
-                when {
-                    mimeType?.startsWith("image/") == true -> binding.imgSelectedImage.setImageURI(
-                        it
-                    )
+    private fun initRecyclerView() {
+        mediaAdapter = MediaAdapter(mediaFileList)
+        binding.recyclerViewImages.adapter = mediaAdapter
+    }
 
-                    else -> handleDocument(it, mimeType)
+    @SuppressLint("NotifyDataSetChanged")
+    private fun setupMediaPicker() {
+        val supportedDocs = setOf(
+            "application/pdf",
+            "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.ms-excel",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+        mediaPicker = ImagePicker(this, onImagePicked = { uriList ->
+            uriList?.takeIf { it.isNotEmpty() }?.let {
+                mediaFileList.clear()
+                val newMedia = uriList.mapNotNull { uri ->
+                    val type = contentResolver.getType(uri) ?: return@mapNotNull null
+
+                    when {
+                        type.startsWith("image/") -> {
+                            updateMediaVisibility("List")
+                            MediaFile(uri, null, isImage = true)
+                        }
+
+                        type in supportedDocs -> {
+                            updateMediaVisibility("List")
+                            MediaFile(uri, getFileName(uri), isImage = false)
+                        }
+
+                        type.startsWith("video/") -> {
+                            updateMediaVisibility("Video")
+                            showVideo(uri) // This should return a MediaFile
+                        }
+
+                        else -> null
+                    }
+                }
+
+                mediaFileList.addAll(newMedia)
+                mediaAdapter.notifyDataSetChanged()
+
+                binding.recyclerViewImages.visibility =
+                    if (mediaFileList.isNotEmpty()) View.VISIBLE else View.GONE
+            }
+        }, onCameraUriPrepared = { uri ->
+            uri?.let {
+                with(binding) {
+                    imgSelectedImage.apply {
+                        visibility = View.VISIBLE
+                        setImageURI(it)
+                    }
+                    updateMediaVisibility("Camera")
+                }
+            }
+        })
+    }
+
+    private fun showVideo(uri: Uri): MediaFile {
+        with(binding) {
+            val controller = MediaController(this@MainActivity).apply {
+                setAnchorView(videoView)
+            }
+
+            videoView.apply {
+                setMediaController(controller)
+                setVideoURI(uri)
+                setOnPreparedListener {
+                    it.isLooping = true
+                    start()
                 }
             }
         }
+        return MediaFile(uri, getFileName(uri), isImage = false)
     }
 
-    private fun setupClickListeners() = with(binding) {
-        btnSelectImage.setOnClickListener { mediaPicker.pickImage(this@MainActivity) }
-        btnFragment.setOnClickListener {
-            fragmentContainer.visibility = View.VISIBLE
+    private fun setupClickListeners(){
+        binding.btnSelectImage.setOnClickListener { mediaPicker.pickImage(this@MainActivity) }
+        binding.btnFragment.setOnClickListener {
+            binding.fragmentContainer.visibility = View.VISIBLE
+            binding.videoView.visibility = View.GONE
+            binding.imgSelectedImage.visibility = View.GONE
+            binding.recyclerViewImages.visibility = View.GONE
+
             supportFragmentManager.beginTransaction()
-                .replace(com.app.mediapicker.R.id.fragment_container, HomeFragment())
-                .commit()
-        }
-    }
-
-    private fun handleDocument(uri: Uri, mimeType: String?) {
-        val allowedTypes = setOf(
-            "application/pdf", "application/msword",
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            "application/vnd.ms-excel",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "text/csv"
-        )
-
-        if (mimeType !in allowedTypes) {
-            showToast("Unsupported file type: $mimeType")
-            return
-        }
-
-        binding.textFilename.text = "fileName: ${getFileName(uri)}"
-
-        val intent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(uri, mimeType)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-
-        try {
-            startActivity(Intent.createChooser(intent, "Open with"))
-        } catch (e: ActivityNotFoundException) {
-            showToast("No app found to open this document: ${e.message}")
+                .replace(com.app.mediapicker.R.id.fragment_container, HomeFragment()).commit()
         }
     }
 
@@ -85,6 +127,11 @@ class MainActivity : AppCompatActivity() {
             if (cursor.moveToFirst() && index != -1) cursor.getString(index) else null
         }
 
-    private fun showToast(message: String) =
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    private fun updateMediaVisibility(type: String) {
+        with(binding) {
+            imgSelectedImage.visibility = if (type == "Camera") View.VISIBLE else View.GONE
+            videoView.visibility = if (type == "Video") View.VISIBLE else View.GONE
+            recyclerViewImages.visibility = if (type == "List") View.VISIBLE else View.GONE
+        }
+    }
 }

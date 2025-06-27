@@ -4,4 +4,5 @@
     <string name="gallery">Gallery</string>
     <string name="camera">Camera</string>
     <string name="document">Document</string>
+    <string name="video">Video</string>
 </resources>
