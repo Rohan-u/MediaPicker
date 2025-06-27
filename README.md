@@ -10,6 +10,7 @@ A simple and customizable Android media picker that allows users to choose an im
 - 🖼️ Choose Image from **Gallery**
 - 📷 Capture Image using **Camera**
 - 🔀 Option to enable/disable **Camera** or **Gallery**
+- 📄 Allows users to upload documents and open them with Google Drive or other compatible applications
 
 ---
 
@@ -76,7 +77,13 @@ Add the `FileProvider` inside your `<application>` tag:
 <?xml version="1.0" encoding="utf-8"?>
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
     <external-files-path name="my_images" path="Pictures/" />
+
+    <!-- document external files-->
+    <external-path
+        name="external_files"
+        path="." />
 </paths>
+
 ```
 
 ---
@@ -98,7 +105,13 @@ override fun onCreate(savedInstanceState: Bundle?) {
 
         mediaPicker = ImagePicker(this) { uri ->
             uri?.let {
-                binding.imgSelectedImage.setImageURI(it)
+                val mimeType = contentResolver.getType(it)
+
+                if (mimeType?.startsWith("image/") == true) {
+                    binding.imgSelectedImage.setImageURI(it)
+                } else {
+                    handleDocumentOpen(uri, mimeType) // Handle document types
+                }
             }
         }
 
@@ -113,6 +126,47 @@ override fun onCreate(savedInstanceState: Bundle?) {
                 .commit()
         }
     }
+
+    // Handle the result from the document picker
+    private fun handleDocumentOpen(uri: Uri, mimeType: String?) {
+        val allowedTypes = setOf(
+            "application/pdf",
+            "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.ms-excel",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "text/csv"
+        )
+
+        if (mimeType !in allowedTypes) {
+            Toast.makeText(this, "Unsupported file type: $mimeType", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Get the file name from the URI
+        val fileName = getFileNameFromUri(uri)
+        binding.textFilename.text = "fileName: $fileName"
+
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, mimeType)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+
+        try {
+            startActivity(Intent.createChooser(intent, "Open with"))
+        } catch (e: ActivityNotFoundException) {
+            Toast.makeText(this, "No app found to open this document :: ${e.message.toString()}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Function to get the file name from the URI
+    private fun getFileNameFromUri(uri: Uri): String? {
+        return contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            if (cursor.moveToFirst() && nameIndex != -1) cursor.getString(nameIndex) else null
+        }
+    }
+ 
 ```
 
 ---
@@ -135,7 +189,13 @@ override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
 
         mediaPicker = ImagePicker(this) { uri ->
             uri?.let {
-                binding.imgSelectedImage.setImageURI(it)
+                val mimeType = requireActivity().contentResolver.getType(it) // Get the MIME type of the selected file
+
+                if (mimeType?.startsWith("image/") == true) {
+                    binding.imgSelectedImage.setImageURI(it) // Display the selected image
+                } else {
+                    handleDocumentOpen(uri, mimeType) // Handle document types
+                }
             }
         }
 
@@ -143,6 +203,47 @@ override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
             mediaPicker.pickImage(requireContext())
         }
     }
+
+    // Handle the result from the document picker
+    private fun handleDocumentOpen(uri: Uri, mimeType: String?) {
+        val allowedTypes = setOf(
+            "application/pdf",
+            "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.ms-excel",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "text/csv"
+        )
+
+        if (mimeType !in allowedTypes) {
+            Toast.makeText(requireActivity(),"Unsupported file type: $mimeType", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Get the file name from the URI
+        val fileName = getFileNameFromUri(uri)
+        binding.textFilename.text = "fileName: $fileName"
+
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, mimeType)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+
+        try {
+            startActivity(Intent.createChooser(intent, "Open with"))
+        } catch (e: ActivityNotFoundException) {
+            Toast.makeText(requireActivity(), "No app found to open this document :: ${e.message.toString()}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Function to get the file name from the URI
+    private fun getFileNameFromUri(uri: Uri): String? {
+        return requireActivity().contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            if (cursor.moveToFirst() && nameIndex != -1) cursor.getString(nameIndex) else null
+        }
+    }
+    
 ```
 
 ---
