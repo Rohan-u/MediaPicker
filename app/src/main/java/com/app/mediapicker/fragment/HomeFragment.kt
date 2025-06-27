@@ -1,6 +1,6 @@
 package com.app.mediapicker.fragment
 
-import android.content.ActivityNotFoundException
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -35,7 +35,7 @@ class HomeFragment : Fragment() {
                 if (mimeType?.startsWith("image/") == true) {
                     binding.imgSelectedImage.setImageURI(it)
                 } else {
-                    handleDocumentOpen(uri, mimeType)
+                    handleDocument(uri, mimeType)
                 }
             }
         }
@@ -45,10 +45,10 @@ class HomeFragment : Fragment() {
         }
     }
 
-    private fun handleDocumentOpen(uri: Uri, mimeType: String?) {
+    @SuppressLint("SetTextI18n")
+    private fun handleDocument(uri: Uri, mimeType: String?) {
         val allowedTypes = setOf(
-            "application/pdf",
-            "application/msword",
+            "application/pdf", "application/msword",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             "application/vnd.ms-excel",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -56,30 +56,30 @@ class HomeFragment : Fragment() {
         )
 
         if (mimeType !in allowedTypes) {
-            Toast.makeText(requireActivity(),"Unsupported file type: $mimeType", Toast.LENGTH_SHORT).show()
+            showToast("Unsupported file type: $mimeType")
             return
         }
 
-        // Get the file name from the URI
-        val fileName = getFileNameFromUri(uri)
-        binding.textFilename.text = "fileName: $fileName"
+        binding.textFilename.text = "fileName: ${getFileName(uri)}"
 
         val intent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(uri, mimeType)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
         }
 
-        try {
+        runCatching {
             startActivity(Intent.createChooser(intent, "Open with"))
-        } catch (e: ActivityNotFoundException) {
-            Toast.makeText(requireActivity(), "No app found to open this document :: ${e.message.toString()}", Toast.LENGTH_SHORT).show()
+        }.onFailure {
+            showToast("No app found to open this document: ${it.message}")
         }
     }
 
-    private fun getFileNameFromUri(uri: Uri): String? {
-        return requireActivity().contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-            val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-            if (cursor.moveToFirst() && nameIndex != -1) cursor.getString(nameIndex) else null
+    private fun getFileName(uri: Uri): String? =
+        requireContext().contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            cursor.takeIf { it.moveToFirst() }?.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                ?.takeIf { it != -1 }?.let(cursor::getString)
         }
-    }
+
+    private fun showToast(message: String) =
+        Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
 }

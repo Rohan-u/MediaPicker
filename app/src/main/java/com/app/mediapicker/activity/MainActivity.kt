@@ -19,40 +19,41 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Inflate the binding
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
-
+        binding = ActivityMainBinding.inflate(layoutInflater).also { setContentView(it.root) }
         enableEdgeToEdge()
 
+        setupMediaPicker()
+        setupClickListeners()
+    }
+
+    private fun setupMediaPicker() {
         mediaPicker = ImagePicker(this) { uri ->
             uri?.let {
                 val mimeType = contentResolver.getType(it)
+                when {
+                    mimeType?.startsWith("image/") == true -> binding.imgSelectedImage.setImageURI(
+                        it
+                    )
 
-                if (mimeType?.startsWith("image/") == true) {
-                    binding.imgSelectedImage.setImageURI(it)
-                } else {
-                    handleDocumentOpen(uri, mimeType)
+                    else -> handleDocument(it, mimeType)
                 }
             }
         }
+    }
 
-        binding.btnSelectImage.setOnClickListener {
-            mediaPicker.pickImage(this@MainActivity)
-        }
-
-        binding.btnFragment.setOnClickListener {
-            binding.fragmentContainer.visibility = View.VISIBLE
+    private fun setupClickListeners() = with(binding) {
+        btnSelectImage.setOnClickListener { mediaPicker.pickImage(this@MainActivity) }
+        btnFragment.setOnClickListener {
+            fragmentContainer.visibility = View.VISIBLE
             supportFragmentManager.beginTransaction()
                 .replace(com.app.mediapicker.R.id.fragment_container, HomeFragment())
                 .commit()
         }
     }
 
-    private fun handleDocumentOpen(uri: Uri, mimeType: String?) {
+    private fun handleDocument(uri: Uri, mimeType: String?) {
         val allowedTypes = setOf(
-            "application/pdf",
-            "application/msword",
+            "application/pdf", "application/msword",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             "application/vnd.ms-excel",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -60,13 +61,11 @@ class MainActivity : AppCompatActivity() {
         )
 
         if (mimeType !in allowedTypes) {
-            Toast.makeText(this, "Unsupported file type: $mimeType", Toast.LENGTH_SHORT).show()
+            showToast("Unsupported file type: $mimeType")
             return
         }
 
-        // Get the file name from the URI
-        val fileName = getFileNameFromUri(uri)
-        binding.textFilename.text = "fileName: $fileName"
+        binding.textFilename.text = "fileName: ${getFileName(uri)}"
 
         val intent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(uri, mimeType)
@@ -76,14 +75,16 @@ class MainActivity : AppCompatActivity() {
         try {
             startActivity(Intent.createChooser(intent, "Open with"))
         } catch (e: ActivityNotFoundException) {
-            Toast.makeText(this, "No app found to open this document :: ${e.message.toString()}", Toast.LENGTH_SHORT).show()
+            showToast("No app found to open this document: ${e.message}")
         }
     }
 
-    private fun getFileNameFromUri(uri: Uri): String? {
-        return contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-            val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-            if (cursor.moveToFirst() && nameIndex != -1) cursor.getString(nameIndex) else null
+    private fun getFileName(uri: Uri): String? =
+        contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            if (cursor.moveToFirst() && index != -1) cursor.getString(index) else null
         }
-    }
+
+    private fun showToast(message: String) =
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
 }
