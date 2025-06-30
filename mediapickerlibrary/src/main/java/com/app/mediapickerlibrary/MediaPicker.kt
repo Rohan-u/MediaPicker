@@ -16,6 +16,8 @@ import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
@@ -25,24 +27,32 @@ import java.io.File
 object MediaPicker {
     fun showDialogMediaPicker(
         context: Context,
-        getContentLauncher: ActivityResultLauncher<String>,
+        getContentLauncher: ActivityResultLauncher<PickVisualMediaRequest>,
         onCameraUriPrepared: (Uri) -> Unit,
         disableGallery: Boolean,
         disableCamera: Boolean,
-        disableDocument : Boolean,
-        disableVideo : Boolean,
+        disableDocument: Boolean,
+        disableVideo: Boolean,
         getDocumentLauncher: ActivityResultLauncher<Array<String>>,
         videoPickerLauncher: ActivityResultLauncher<String>,
     ) {
         if (disableGallery && disableCamera && disableDocument && disableVideo) {
-            Toast.makeText(context, "All options are disabled. Please enable at least one.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                context,
+                "All options are disabled. Please enable at least one.",
+                Toast.LENGTH_SHORT
+            ).show()
             return
         }
         if (disableGallery || disableCamera) {
             if (disableGallery) {
                 openCamera(context, onCameraUriPrepared)
             } else if (disableCamera) {
-                getContentLauncher.launch("image/*")
+                // getContentLauncher.launch("image/*")
+                getContentLauncher.launch(
+                    PickVisualMediaRequest.Builder()
+                        .setMediaType(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        .build())
             }
         } else {
             val popUpDialog = Dialog(context)
@@ -65,7 +75,11 @@ object MediaPicker {
             }
             gallery.setOnClickListener { v: View? ->
                 popUpDialog.dismiss()
-                getContentLauncher.launch("image/*")
+                // getContentLauncher.launch("image/*")
+                getContentLauncher.launch(
+                    PickVisualMediaRequest.Builder()
+                        .setMediaType(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        .build())
             }
             document.setOnClickListener { v: View? ->
                 popUpDialog.dismiss()

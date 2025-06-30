@@ -8,8 +8,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 
 class ImagePicker(
     caller: ActivityResultCaller,
+    maxImages : Int,
     private val onImagePicked: (List<Uri>?) -> Unit,
-    private val onCameraUriPrepared: (Uri?) -> Unit
+    private val onCameraOrImageOrVideoUriPrepared: (Uri?) -> Unit
 ) {
     private var imageUri: Uri? = null
     var disableGallery = false
@@ -17,17 +18,17 @@ class ImagePicker(
     var disableDocument = false
     var disableVideo = false
 
-    // Register the activity result launcher for getting content (images)
-    private val getContentLauncher: ActivityResultLauncher<String> =
-        caller.registerForActivityResult(ActivityResultContracts.GetMultipleContents()) { uriList ->
-            onImagePicked(uriList)
+    // Register the ImagePicker to allow selecting multiple visual media (images and supported documents)
+    private var getContentLauncher =
+        caller.registerForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(maxImages)) { uriList ->
+           onImagePicked(uriList)
         }
 
     // Launcher for taking a picture using the camera
     private val takePictureLauncher: ActivityResultLauncher<Uri> =
         caller.registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
             if (success && imageUri != null) {
-                onCameraUriPrepared(imageUri!!)
+                onCameraOrImageOrVideoUriPrepared(imageUri!!)
             }
         }
 
@@ -39,8 +40,8 @@ class ImagePicker(
 
     // launcher for video picking
     val videoPickerLauncher: ActivityResultLauncher<String> =
-        caller.registerForActivityResult(ActivityResultContracts.GetMultipleContents()) { uriList ->
-            onImagePicked(uriList)
+        caller.registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            onCameraOrImageOrVideoUriPrepared(uri)
         }
 
     fun pickImage(context: Context) {

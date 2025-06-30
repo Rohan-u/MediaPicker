@@ -8,6 +8,7 @@ import android.view.View
 import android.widget.MediaController
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.GridLayoutManager
 import com.app.mediapicker.adapter.MediaAdapter
 import com.app.mediapicker.dataModel.MediaFile
 import com.app.mediapicker.databinding.ActivityMainBinding
@@ -32,9 +33,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun initRecyclerView() {
         mediaAdapter = MediaAdapter(mediaFileList)
+        binding.recyclerViewImages.layoutManager = GridLayoutManager(this, 4)
         binding.recyclerViewImages.adapter = mediaAdapter
     }
 
+    // Initialize the ImagePicker to allow picking up to 5 images or supported documents,
+    // and handle camera or video input through onCameraOrImageOrVideoUriPrepared
     @SuppressLint("NotifyDataSetChanged")
     private fun setupMediaPicker() {
         val supportedDocs = setOf(
@@ -45,49 +49,54 @@ class MainActivity : AppCompatActivity() {
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
-        mediaPicker = ImagePicker(this, onImagePicked = { uriList ->
-            uriList?.takeIf { it.isNotEmpty() }?.let {
-                mediaFileList.clear()
-                val newMedia = uriList.mapNotNull { uri ->
-                    val type = contentResolver.getType(uri) ?: return@mapNotNull null
+        mediaPicker = ImagePicker(
+            this,
+            maxImages = 5, // maxItems parameter to limit the number of selectable images
+            onImagePicked = { uriList ->
+                uriList?.takeIf { it.isNotEmpty() }?.let {
+                    mediaFileList.clear()
+                    val newMedia = uriList.mapNotNull { uri ->
+                        val type = contentResolver.getType(uri) ?: return@mapNotNull null
 
+                        when {
+                            type.startsWith("image/") -> {
+                                updateMediaVisibility("List")
+                                MediaFile(uri, null, isImage = true)
+                            }
+
+                            type in supportedDocs -> {
+                                updateMediaVisibility("List")
+                                MediaFile(uri, getFileName(uri), isImage = false)
+                            }
+
+                            else -> null
+                        }
+                    }
+
+                    mediaFileList.addAll(newMedia)
+                    mediaAdapter.notifyDataSetChanged()
+
+                    binding.recyclerViewImages.visibility =
+                        if (mediaFileList.isNotEmpty()) View.VISIBLE else View.GONE
+                }
+            },
+            onCameraOrImageOrVideoUriPrepared = { uri ->
+                uri?.let {
+                    val type = contentResolver.getType(it)
                     when {
-                        type.startsWith("image/") -> {
-                            updateMediaVisibility("List")
-                            MediaFile(uri, null, isImage = true)
-                        }
-
-                        type in supportedDocs -> {
-                            updateMediaVisibility("List")
-                            MediaFile(uri, getFileName(uri), isImage = false)
-                        }
-
-                        type.startsWith("video/") -> {
+                        type!!.startsWith("video/") -> {
                             updateMediaVisibility("Video")
                             showVideo(uri) // This should return a MediaFile
                         }
 
-                        else -> null
+                        type.startsWith("image/") -> {
+                            updateMediaVisibility("Camera")
+                            binding.imgSelectedImage.setImageURI(uri)
+                        }
                     }
                 }
-
-                mediaFileList.addAll(newMedia)
-                mediaAdapter.notifyDataSetChanged()
-
-                binding.recyclerViewImages.visibility =
-                    if (mediaFileList.isNotEmpty()) View.VISIBLE else View.GONE
             }
-        }, onCameraUriPrepared = { uri ->
-            uri?.let {
-                with(binding) {
-                    imgSelectedImage.apply {
-                        visibility = View.VISIBLE
-                        setImageURI(it)
-                    }
-                    updateMediaVisibility("Camera")
-                }
-            }
-        })
+        )
     }
 
     private fun showVideo(uri: Uri): MediaFile {
@@ -108,7 +117,7 @@ class MainActivity : AppCompatActivity() {
         return MediaFile(uri, getFileName(uri), isImage = false)
     }
 
-    private fun setupClickListeners(){
+    private fun setupClickListeners() {
         binding.btnSelectImage.setOnClickListener { mediaPicker.pickImage(this@MainActivity) }
         binding.btnFragment.setOnClickListener {
             binding.fragmentContainer.visibility = View.VISIBLE
