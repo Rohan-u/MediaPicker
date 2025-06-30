@@ -58,60 +58,61 @@ class HomeFragment : Fragment() {
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
-        mediaPicker = ImagePicker(this,
+        mediaPicker = ImagePicker(
+            this,
             maxImages = 5,
             onImagePicked = { uriList ->
-            uriList?.takeIf { it.isNotEmpty() }?.let {
-                mediaFileList.clear()
+                uriList?.takeIf { it.isNotEmpty() }?.let {
+                    mediaFileList.clear()
 
-                val newMedia = uriList.mapNotNull { uri ->
-                    val type =
-                        requireActivity().contentResolver.getType(uri) ?: return@mapNotNull null
+                    val newMedia = uriList.mapNotNull { uri ->
+                        val type =
+                            requireActivity().contentResolver.getType(uri) ?: return@mapNotNull null
 
+                        when {
+                            type.startsWith("image/") -> {
+                                updateMediaVisibility("List")
+                                MediaFile(uri, null, isImage = true)
+                            }
+
+                            type in supportedDocs -> {
+                                updateMediaVisibility("List")
+                                MediaFile(uri, getFileName(uri), isImage = false)
+                            }
+
+                            else -> null
+                        }
+                    }
+
+                    mediaFileList.addAll(newMedia)
+                    mediaAdapter.notifyDataSetChanged()
+
+
+                    // Show RecyclerView only if list is not empty and video is not full-screen
+                    binding.recyclerViewImages.visibility =
+                        if (mediaFileList.isNotEmpty()) View.VISIBLE else View.GONE
+
+                    // Optional: Hide single preview views if not needed
+                    binding.imgSelectedImage.visibility = View.GONE
+                    // Note: Don't hide videoView here if you want to show the video immediately
+                }
+            },
+            onCameraOrImageOrVideoUriPrepared = { uri ->
+                uri?.let {
+                    val type = requireActivity().contentResolver.getType(it)
                     when {
-                        type.startsWith("image/") -> {
-                            updateMediaVisibility("List")
-                            MediaFile(uri, null, isImage = true)
-                        }
-
-                        type in supportedDocs -> {
-                            updateMediaVisibility("List")
-                            MediaFile(uri, getFileName(uri), isImage = false)
-                        }
-
-                        type.startsWith("video/") -> {
+                        type!!.startsWith("video/") -> {
                             updateMediaVisibility("Video")
                             showVideo(uri) // This should return a MediaFile
                         }
 
-                        else -> null
+                        type.startsWith("image/") -> {
+                            updateMediaVisibility("Camera")
+                            binding.imgSelectedImage.setImageURI(uri)
+                        }
                     }
                 }
-
-                mediaFileList.addAll(newMedia)
-                mediaAdapter.notifyDataSetChanged()
-
-
-                // Show RecyclerView only if list is not empty and video is not full-screen
-                binding.recyclerViewImages.visibility =
-                    if (mediaFileList.isNotEmpty()) View.VISIBLE else View.GONE
-
-                // Optional: Hide single preview views if not needed
-                binding.imgSelectedImage.visibility = View.GONE
-                // Note: Don't hide videoView here if you want to show the video immediately
-            }
-        }, onCameraOrImageOrVideoUriPrepared = { uri ->
-            uri?.let {
-                with(binding) {
-                    recyclerViewImages.visibility = View.GONE
-                    imgSelectedImage.apply {
-                        visibility = View.VISIBLE
-                        setImageURI(it)
-                    }
-                    updateMediaVisibility("Camera")
-                }
-            }
-        })
+            })
     }
 
     private fun getFileName(uri: Uri): String? =

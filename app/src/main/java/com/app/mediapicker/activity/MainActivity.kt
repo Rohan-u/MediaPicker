@@ -49,54 +49,55 @@ class MainActivity : AppCompatActivity() {
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
-        mediaPicker = ImagePicker(
-            this,
-            maxImages = 5, // maxItems parameter to limit the number of selectable images
-            onImagePicked = { uriList ->
-                uriList?.takeIf { it.isNotEmpty() }?.let {
-                    mediaFileList.clear()
-                    val newMedia = uriList.mapNotNull { uri ->
-                        val type = contentResolver.getType(uri) ?: return@mapNotNull null
+        mediaPicker =
+            ImagePicker(
+                this,
+                maxImages = 5, // maxItems parameter to limit the number of selectable images
+                onImagePicked = { uriList ->
+                    uriList?.takeIf { it.isNotEmpty() }?.let {
+                        mediaFileList.clear()
+                        val newMedia = uriList.mapNotNull { uri ->
+                            val type = contentResolver.getType(uri) ?: return@mapNotNull null
 
+                            when {
+                                type.startsWith("image/") -> {
+                                    updateMediaVisibility("List")
+                                    MediaFile(uri, null, isImage = true)
+                                }
+
+                                type in supportedDocs -> {
+                                    updateMediaVisibility("List")
+                                    MediaFile(uri, getFileName(uri), isImage = false)
+                                }
+
+                                else -> null
+                            }
+                        }
+
+                        mediaFileList.addAll(newMedia)
+                        mediaAdapter.notifyDataSetChanged()
+
+                        binding.recyclerViewImages.visibility =
+                            if (mediaFileList.isNotEmpty()) View.VISIBLE else View.GONE
+                    }
+                },
+                onCameraOrImageOrVideoUriPrepared = { uri ->
+                    uri?.let {
+                        val type = contentResolver.getType(it)
                         when {
+                            type!!.startsWith("video/") -> {
+                                updateMediaVisibility("Video")
+                                showVideo(uri) // This should return a MediaFile
+                            }
+
                             type.startsWith("image/") -> {
-                                updateMediaVisibility("List")
-                                MediaFile(uri, null, isImage = true)
+                                updateMediaVisibility("Camera")
+                                binding.imgSelectedImage.setImageURI(uri)
                             }
-
-                            type in supportedDocs -> {
-                                updateMediaVisibility("List")
-                                MediaFile(uri, getFileName(uri), isImage = false)
-                            }
-
-                            else -> null
-                        }
-                    }
-
-                    mediaFileList.addAll(newMedia)
-                    mediaAdapter.notifyDataSetChanged()
-
-                    binding.recyclerViewImages.visibility =
-                        if (mediaFileList.isNotEmpty()) View.VISIBLE else View.GONE
-                }
-            },
-            onCameraOrImageOrVideoUriPrepared = { uri ->
-                uri?.let {
-                    val type = contentResolver.getType(it)
-                    when {
-                        type!!.startsWith("video/") -> {
-                            updateMediaVisibility("Video")
-                            showVideo(uri) // This should return a MediaFile
-                        }
-
-                        type.startsWith("image/") -> {
-                            updateMediaVisibility("Camera")
-                            binding.imgSelectedImage.setImageURI(uri)
                         }
                     }
                 }
-            }
-        )
+            )
     }
 
     private fun showVideo(uri: Uri): MediaFile {
