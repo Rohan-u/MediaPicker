@@ -33,7 +33,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun initRecyclerView() {
         mediaAdapter = MediaAdapter(mediaFileList)
-        binding.recyclerViewImages.layoutManager = GridLayoutManager(this, 4)
         binding.recyclerViewImages.adapter = mediaAdapter
     }
 
@@ -76,6 +75,13 @@ class MainActivity : AppCompatActivity() {
 
                         mediaFileList.addAll(newMedia)
                         mediaAdapter.notifyDataSetChanged()
+
+                        if (newMedia.first().isImage) {
+                            binding.recyclerViewImages.layoutManager =
+                                GridLayoutManager(this, 4)
+                        } else {
+                            binding.recyclerViewImages.layoutManager = GridLayoutManager(this, 2)
+                        }
 
                         binding.recyclerViewImages.visibility =
                             if (mediaFileList.isNotEmpty()) View.VISIBLE else View.GONE

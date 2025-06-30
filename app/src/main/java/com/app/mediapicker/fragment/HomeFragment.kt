@@ -9,6 +9,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.MediaController
 import androidx.fragment.app.Fragment
+import androidx.recyclerview.widget.GridLayoutManager
 import com.app.mediapicker.adapter.MediaAdapter
 import com.app.mediapicker.dataModel.MediaFile
 import com.app.mediapicker.databinding.FragmentHomeBinding
@@ -87,6 +88,12 @@ class HomeFragment : Fragment() {
                     mediaFileList.addAll(newMedia)
                     mediaAdapter.notifyDataSetChanged()
 
+                    if (newMedia.first().isImage) {
+                        binding.recyclerViewImages.layoutManager =
+                            GridLayoutManager(requireActivity(), 4)
+                    } else {
+                        binding.recyclerViewImages.layoutManager = GridLayoutManager(requireActivity(), 2)
+                    }
 
                     // Show RecyclerView only if list is not empty and video is not full-screen
                     binding.recyclerViewImages.visibility =

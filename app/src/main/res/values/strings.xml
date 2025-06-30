@@ -2,4 +2,5 @@
     <string name="app_name">MediaPicker</string>
     <string name="select_image">Select Image</string>
     <string name="select_fragment">fragment</string>
+    <string name="sample_file">Sample File</string>
 </resources>
