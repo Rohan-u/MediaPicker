@@ -6,11 +6,19 @@ A simple and customizable Android media picker that allows users to choose an im
 
 ## ✨ Features
 
-- ✅ Easy Alert Dialog UI Integration
-- 🖼️ Choose Image from **Gallery**
-- 📷 Capture Image using **Camera**
-- 🔀 Option to enable/disable **Camera** or **Gallery**
-- 📄 Allows users to upload documents and open them with Google Drive or other compatible applications
+✨ Features
+
+✅ Easy Alert Dialog UI Integration
+🖼️ Choose Image from Gallery
+📷 Capture Image using Camera
+🔀 Option to enable/disable Camera or Gallery
+📄 Allows users to upload documents and open them with Google Drive or other compatible applications
+
+📸 New Features
+
+🖼️ Allows selecting up to 5 images using the PickVisualMedia API
+🎥 Handles camera or video input through the onCameraOrImageOrVideoUriPrepared callback
+🔢 The ImagePicker constructor accepts a maxItems parameter to limit the number of selectable images
 
 ---
 
@@ -97,73 +105,124 @@ private lateinit var mediaPicker: ImagePicker
 
 override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Inflate the binding
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
-
+        binding = ActivityMainBinding.inflate(layoutInflater).also { setContentView(it.root) }
         enableEdgeToEdge()
 
-        mediaPicker = ImagePicker(this) { uri ->
-            uri?.let {
-                val mimeType = contentResolver.getType(it)
-
-                if (mimeType?.startsWith("image/") == true) {
-                    binding.imgSelectedImage.setImageURI(it)
-                } else {
-                    handleDocumentOpen(uri, mimeType) // Handle document types
-                }
-            }
-        }
-
-        binding.btnSelectImage.setOnClickListener {
-            mediaPicker.pickImage(this@MainActivity)
-        }
-
-        binding.btnFragment.setOnClickListener {
-            binding.fragmentContainer.visibility = View.VISIBLE
-            supportFragmentManager.beginTransaction()
-                .replace(com.app.mediapicker.R.id.fragment_container, HomeFragment())
-                .commit()
-        }
+        setupMediaPicker()
+        setupClickListeners()
+        initRecyclerView()
     }
 
-    // Handle the result from the document picker
-    private fun handleDocumentOpen(uri: Uri, mimeType: String?) {
-        val allowedTypes = setOf(
+    private fun initRecyclerView() {
+        mediaAdapter = MediaAdapter(mediaFileList)
+        binding.recyclerViewImages.layoutManager = GridLayoutManager(this, 4)
+        binding.recyclerViewImages.adapter = mediaAdapter
+    }
+
+    // Initialize the ImagePicker to allow picking up to 5 images or supported documents,
+    // and handle camera or video input through onCameraOrImageOrVideoUriPrepared
+    @SuppressLint("NotifyDataSetChanged")
+    private fun setupMediaPicker() {
+        val supportedDocs = setOf(
             "application/pdf",
             "application/msword",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             "application/vnd.ms-excel",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "text/csv"
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
-        if (mimeType !in allowedTypes) {
-            Toast.makeText(this, "Unsupported file type: $mimeType", Toast.LENGTH_SHORT).show()
-            return
+        mediaPicker = ImagePicker(
+            this,
+            maxImages = 5, // maxItems parameter to limit the number of selectable images
+            onImagePicked = { uriList ->
+                uriList?.takeIf { it.isNotEmpty() }?.let {
+                    mediaFileList.clear()
+                    val newMedia = uriList.mapNotNull { uri ->
+                        val type = contentResolver.getType(uri) ?: return@mapNotNull null
+
+                        when {
+                            type.startsWith("image/") -> {
+                                updateMediaVisibility("List")
+                                MediaFile(uri, null, isImage = true)
+                            }
+
+                            type in supportedDocs -> {
+                                updateMediaVisibility("List")
+                                MediaFile(uri, getFileName(uri), isImage = false)
+                            }
+
+                            else -> null
+                        }
+                    }
+
+                    mediaFileList.addAll(newMedia)
+                    mediaAdapter.notifyDataSetChanged()
+
+                    binding.recyclerViewImages.visibility =
+                        if (mediaFileList.isNotEmpty()) View.VISIBLE else View.GONE
+                }
+            },
+            onCameraOrImageOrVideoUriPrepared = { uri ->
+                uri?.let {
+                    val type = contentResolver.getType(it)
+                    when {
+                        type!!.startsWith("video/") -> {
+                            updateMediaVisibility("Video")
+                            showVideo(uri) // This should return a MediaFile
+                        }
+
+                        type.startsWith("image/") -> {
+                            updateMediaVisibility("Camera")
+                            binding.imgSelectedImage.setImageURI(uri)
+                        }
+                    }
+                }
+            }
+        )
+    }
+
+    private fun showVideo(uri: Uri): MediaFile {
+        with(binding) {
+            val controller = MediaController(this@MainActivity).apply {
+                setAnchorView(videoView)
+            }
+
+            videoView.apply {
+                setMediaController(controller)
+                setVideoURI(uri)
+                setOnPreparedListener {
+                    it.isLooping = true
+                    start()
+                }
+            }
         }
+        return MediaFile(uri, getFileName(uri), isImage = false)
+    }
 
-        // Get the file name from the URI
-        val fileName = getFileNameFromUri(uri)
-        binding.textFilename.text = "fileName: $fileName"
+    private fun setupClickListeners() {
+        binding.btnSelectImage.setOnClickListener { mediaPicker.pickImage(this@MainActivity) }
+        binding.btnFragment.setOnClickListener {
+            binding.fragmentContainer.visibility = View.VISIBLE
+            binding.videoView.visibility = View.GONE
+            binding.imgSelectedImage.visibility = View.GONE
+            binding.recyclerViewImages.visibility = View.GONE
 
-        val intent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(uri, mimeType)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-
-        try {
-            startActivity(Intent.createChooser(intent, "Open with"))
-        } catch (e: ActivityNotFoundException) {
-            Toast.makeText(this, "No app found to open this document :: ${e.message.toString()}", Toast.LENGTH_SHORT).show()
+            supportFragmentManager.beginTransaction()
+                .replace(com.app.mediapicker.R.id.fragment_container, HomeFragment()).commit()
         }
     }
 
-    // Function to get the file name from the URI
-    private fun getFileNameFromUri(uri: Uri): String? {
-        return contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-            val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-            if (cursor.moveToFirst() && nameIndex != -1) cursor.getString(nameIndex) else null
+    private fun getFileName(uri: Uri): String? =
+        contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            if (cursor.moveToFirst() && index != -1) cursor.getString(index) else null
+        }
+
+    private fun updateMediaVisibility(type: String) {
+        with(binding) {
+            imgSelectedImage.visibility = if (type == "Camera") View.VISIBLE else View.GONE
+            videoView.visibility = if (type == "Video") View.VISIBLE else View.GONE
+            recyclerViewImages.visibility = if (type == "List") View.VISIBLE else View.GONE
         }
     }
  
@@ -187,60 +246,124 @@ override fun onCreateView(
 override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        mediaPicker = ImagePicker(this) { uri ->
-            uri?.let {
-                val mimeType = requireActivity().contentResolver.getType(it) // Get the MIME type of the selected file
-
-                if (mimeType?.startsWith("image/") == true) {
-                    binding.imgSelectedImage.setImageURI(it) // Display the selected image
-                } else {
-                    handleDocumentOpen(uri, mimeType) // Handle document types
-                }
-            }
-        }
-
-        binding.btnSelectImage.setOnClickListener {
-            mediaPicker.pickImage(requireContext())
-        }
+        setupMediaPicker()
+        initRecyclerView()
+        setupClickListeners()
     }
 
-    // Handle the result from the document picker
-    private fun handleDocumentOpen(uri: Uri, mimeType: String?) {
-        val allowedTypes = setOf(
+    private fun setupClickListeners() {
+        binding.btnSelectImage.setOnClickListener { mediaPicker.pickImage(requireActivity()) }
+    }
+
+    private fun initRecyclerView() {
+        mediaAdapter = MediaAdapter(mediaFileList)
+        binding.recyclerViewImages.adapter = mediaAdapter
+
+        binding.recyclerViewImages.visibility = View.GONE
+        binding.imgSelectedImage.visibility = View.GONE
+        binding.videoView.visibility = View.GONE
+    }
+
+    @SuppressLint("NotifyDataSetChanged")
+    private fun setupMediaPicker() {
+        val supportedDocs = setOf(
             "application/pdf",
             "application/msword",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             "application/vnd.ms-excel",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "text/csv"
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
-        if (mimeType !in allowedTypes) {
-            Toast.makeText(requireActivity(),"Unsupported file type: $mimeType", Toast.LENGTH_SHORT).show()
-            return
-        }
+        mediaPicker = ImagePicker(
+            this,
+            maxImages = 5,
+            onImagePicked = { uriList ->
+                uriList?.takeIf { it.isNotEmpty() }?.let {
+                    mediaFileList.clear()
 
-        // Get the file name from the URI
-        val fileName = getFileNameFromUri(uri)
-        binding.textFilename.text = "fileName: $fileName"
+                    val newMedia = uriList.mapNotNull { uri ->
+                        val type =
+                            requireActivity().contentResolver.getType(uri) ?: return@mapNotNull null
 
-        val intent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(uri, mimeType)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
+                        when {
+                            type.startsWith("image/") -> {
+                                updateMediaVisibility("List")
+                                MediaFile(uri, null, isImage = true)
+                            }
 
-        try {
-            startActivity(Intent.createChooser(intent, "Open with"))
-        } catch (e: ActivityNotFoundException) {
-            Toast.makeText(requireActivity(), "No app found to open this document :: ${e.message.toString()}", Toast.LENGTH_SHORT).show()
-        }
+                            type in supportedDocs -> {
+                                updateMediaVisibility("List")
+                                MediaFile(uri, getFileName(uri), isImage = false)
+                            }
+
+                            else -> null
+                        }
+                    }
+
+                    mediaFileList.addAll(newMedia)
+                    mediaAdapter.notifyDataSetChanged()
+
+
+                    // Show RecyclerView only if list is not empty and video is not full-screen
+                    binding.recyclerViewImages.visibility =
+                        if (mediaFileList.isNotEmpty()) View.VISIBLE else View.GONE
+
+                    // Optional: Hide single preview views if not needed
+                    binding.imgSelectedImage.visibility = View.GONE
+                    // Note: Don't hide videoView here if you want to show the video immediately
+                }
+            },
+            onCameraOrImageOrVideoUriPrepared = { uri ->
+                uri?.let {
+                    val type = requireActivity().contentResolver.getType(it)
+                    when {
+                        type!!.startsWith("video/") -> {
+                            updateMediaVisibility("Video")
+                            showVideo(uri) // This should return a MediaFile
+                        }
+
+                        type.startsWith("image/") -> {
+                            updateMediaVisibility("Camera")
+                            binding.imgSelectedImage.setImageURI(uri)
+                        }
+                    }
+                }
+            })
     }
 
-    // Function to get the file name from the URI
-    private fun getFileNameFromUri(uri: Uri): String? {
-        return requireActivity().contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-            val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-            if (cursor.moveToFirst() && nameIndex != -1) cursor.getString(nameIndex) else null
+    private fun getFileName(uri: Uri): String? =
+        requireActivity().contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            if (cursor.moveToFirst() && index != -1) cursor.getString(index) else null
+        }
+
+    private fun showVideo(uri: Uri): MediaFile {
+        with(binding) {
+            imgSelectedImage.visibility = View.GONE
+            recyclerViewImages.visibility = View.GONE
+            videoView.visibility = View.VISIBLE
+
+            val controller = MediaController(requireContext()).apply {
+                setAnchorView(videoView)
+            }
+
+            videoView.apply {
+                setMediaController(controller)
+                setVideoURI(uri)
+                setOnPreparedListener {
+                    it.isLooping = true
+                    start()
+                }
+            }
+        }
+        return MediaFile(uri, getFileName(uri), isImage = false)
+    }
+
+    private fun updateMediaVisibility(type: String) {
+        with(binding) {
+            imgSelectedImage.visibility = if (type == "Camera") View.VISIBLE else View.GONE
+            videoView.visibility = if (type == "Video") View.VISIBLE else View.GONE
+            recyclerViewImages.visibility = if (type == "List") View.VISIBLE else View.GONE
         }
     }
     
@@ -257,6 +380,13 @@ mediaPicker.disableCamera = true
 mediaPicker.disableGallery = true
 ```
 
+Set max number of selectable Image items:
+```kotlin
+mediaPicker = ImagePicker(this, maxItems = 5) { uriList ->
+    // Handle multiple URIs
+}
+
+```
 ---
 
 ## 📜 License
