@@ -233,17 +233,18 @@ override fun onCreate(savedInstanceState: Bundle?) {
 ### Step 2: Use in a Fragment
 
 ```kotlin
-private lateinit var mediaPicker: ImagePicker
+    private lateinit var mediaPicker: ImagePicker
+    private lateinit var mediaAdapter: MediaAdapter
+    private val mediaFileList = mutableListOf<MediaFile>()
 
-override fun onCreateView(
-    inflater: LayoutInflater, container: ViewGroup?,
-    savedInstanceState: Bundle?
-): View {
-    binding = FragmentHomeBinding.inflate(inflater, container, false)
-    return binding.root
-}
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
+    ): View {
+        binding = FragmentHomeBinding.inflate(inflater, container, false)
+        return binding.root
+    }
 
-override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
         setupMediaPicker()
@@ -303,6 +304,12 @@ override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
                     mediaFileList.addAll(newMedia)
                     mediaAdapter.notifyDataSetChanged()
 
+                    if (newMedia.first().isImage) {
+                        binding.recyclerViewImages.layoutManager =
+                            GridLayoutManager(requireActivity(), 4)
+                    } else {
+                        binding.recyclerViewImages.layoutManager = GridLayoutManager(requireActivity(), 2)
+                    }
 
                     // Show RecyclerView only if list is not empty and video is not full-screen
                     binding.recyclerViewImages.visibility =
